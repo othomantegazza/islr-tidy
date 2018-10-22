@@ -1,0 +1,10 @@
+.Rproj.user
+.Rhistory
+.RData
+.Ruserdata
+
+# bookdown
+_book/*
+_bookdown_files
+_main_files
+_main.Rmd

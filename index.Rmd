@@ -1,0 +1,3 @@
+# Preface {-}
+
+The exercises from [An Intoduction to Statistical Learning](https://www-bcf.usc.edu/~gareth/ISL/) solved with the [Tidyverse](https://www.tidyverse.org/) 

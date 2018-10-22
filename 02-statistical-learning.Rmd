@@ -1,0 +1,235 @@
+# Statistical Learning
+
+```{r}
+library(ISLR)
+library(tidyverse)
+library(magrittr)
+```
+
+## Explore the College Dataset [8]
+
+```{r}
+college <- College %>%
+  as_tibble() 
+college
+```
+
+Skip rownames.
+
+```{r}
+college %>% summary()
+```
+
+In how many Universities more than half of the students come from the top 10% colleges?
+
+```{r}
+college <- college %>%
+  mutate(elite = case_when(Top10perc > 50 ~ "Yes",
+                           TRUE ~ "No"))
+
+college %$% table(elite)
+```
+
+And are those college outstate?
+
+```{r}
+p <- college %>%
+  ggplot(aes(x = elite,
+             y = Outstate))
+
+# With boxplot
+p1 <- p +
+  geom_boxplot(outlier.alpha = 0)
+p1
+
+
+# with beeswarm
+p1 + ggbeeswarm::geom_quasirandom(alpha = .4)
+```
+
+Produce multiple histograms:
+
+```{r}
+college %>%
+  select_if(is.numeric) %>%
+  gather() %>%
+  ggplot(aes(x = value)) +
+  geom_histogram() +
+  facet_wrap(facet = "key",
+             scales = "free", 
+             ncol = 3) +
+  theme_bw()
+```
+
+Report for EDA:
+
+```{r}
+
+```
+
+## Explore the Auto dataset [9]
+
+Take Auto dataset and remove missing values
+
+```{r}
+Auto %>% anyNA()
+
+# otherwise we could remove NA with:
+auto <- 
+  Auto %>%
+  drop_na()
+```
+
+Quantitative or qualitative predictors?
+
+All predictors are quantitative besides `name`.
+`cylinders` is technically numerical, but given is strict discrete nature, could it be considered categorical?
+
+```{r}
+auto %>%
+  map(class) %>%
+  # it looks better as a named character,
+  # but remember the curly braces
+  {set_names(flatten_chr(.),
+             names(.))}
+```
+
+What is the range of the quantitative predictors?
+
+```{r}
+auto %>%
+  select_if(is.numeric) %>%
+  # map_if(.x = .,
+  #        .p = is.numeric,
+  #        .f = range)
+  map(range) %>%
+  # facultative
+  # tibbles print better than lists
+  as_tibble()
+```
+
+And what is their mean and standard dev?
+
+```{r}
+auto %>%
+  select_if(is.numeric) %>%
+  # map the mean and sd function to each numeric column
+  # and directly stores the results in a tibble
+  {tibble(var = colnames(.),
+          mean = map_dbl(., mean),
+          sd = map_dbl(., sd))} %>%
+  # visualize in markdown / HTML
+  knitr::kable()
+```
+
+Remove 10th to 85th observation and check again.
+
+```{r}
+auto %>%
+  # this was easier to do without dyplr
+  .[-c(10:85), ] %>% 
+  # the rest is the same
+  select_if(is.numeric) %>%
+  {tibble(var = colnames(.),
+          mean = map_dbl(., mean),
+          sd = map_dbl(., sd))} %>%
+  # visualize in markdown / HTML
+  knitr::kable()
+```
+
+Explore the distribution and the relation among the variables
+
+```{r, results='hide', message=FALSE}
+auto %>% 
+  select_if(is.numeric) %>%
+  # ggpairs from the package GGally 
+  # is a good alternative to pairs
+  GGally::ggpairs()
+```
+
+How did horsepower changed during the years?
+
+```{r}
+library(lubridate)
+
+p <- 
+auto %>%
+  ggplot(aes(x = year %>% as.character() %>% as_factor(),
+             y = horsepower))
+
+p + geom_boxplot() + geom_point()
+
+p + geom_boxplot() + geom_point(aes(colour = weight))
+
+p2 <- 
+  auto %>% 
+  ggplot(aes(x = year %>% as.character() %>% as_factor(),
+             y = horsepower/weight))
+
+p3 <- p2 + 
+  geom_boxplot() + 
+  ggbeeswarm::geom_quasirandom()
+
+p3 + 
+  ggrepel::geom_text_repel(data = auto %>% 
+                             # mutate(var = horsepower/weight) %>%
+                             filter(horsepower/weight > 0.052),
+                           aes(label = name)) +
+  theme_bw()
+```
+
+Which variable could we use to predict Gas Mileage (mpg)?
+
+From the paired scatterplot, weight might be the best predictor, but also horsepower and displacement. They all correlate negatively with mpg.
+
+```{r}
+
+auto %>%
+  select(name, mpg, displacement, horsepower, weight) %>%
+  # a bit unorthodox way to facet scatterplot
+  gather(key = variable,
+         value = value,
+         displacement,
+         horsepower,
+         weight) %>%
+  ggplot(aes(x = value, 
+             y = mpg)) +
+  geom_point(alpha = .3, colour = "grey30") + 
+  facet_wrap(facets = "variable", 
+             scales = "free_x") +
+  theme_bw()
+```
+
+## Explore the Boston Housing Dataset [10]
+
+We can access the `Boston` dataset from the package `MASS` without attaching the package itself with `::` as in: `MASS::Boston`.
+
+```{r}
+
+# tibbles print better
+boston <- 
+  MASS::Boston %>%
+  as_tibble()
+
+# indeed the tibble print method 
+# displays line and row number automatically
+boston
+```
+
+Make pairwise scatterplots, describe your findings
+
+```{r, results='hide', message=FALSE, fig.width=30, fig.retina=TRUE}
+boston %>% 
+  GGally::ggpairs()
+```
+
+some observations:
+
+- Criminality has a spike in most correlations plots, like if it was concentrated in one area only.
+
+- Nox increases with Industry and Age, and decreases with the distance to the employment centers.
+
+- Tax decreases with median value of user occupied homes?
+
+
+
